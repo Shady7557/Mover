@@ -17,11 +17,14 @@ namespace Mover
                 var asArgs = args?.Where(p => p.StartsWith("-autostartargs="))?.FirstOrDefault() ?? string.Empty;
                 var waitArg = args?.Where(p => p.StartsWith("-wait="))?.FirstOrDefault() ?? string.Empty;
                 var waitStartArg = args?.Where(p => p.StartsWith("-waitstart="))?.FirstOrDefault() ?? string.Empty;
+                var exitWaitArg = args?.Where(p => p.StartsWith("-exitwait="))?.FirstOrDefault() ?? string.Empty;
+                var waitForPidExit = args?.Where(p => p.StartsWith("-waitforpid="))?.FirstOrDefault() ?? string.Empty;
                 if (string.IsNullOrEmpty(fromArg) || string.IsNullOrEmpty(toArg))
                 {
                     Console.WriteLine("Move from or move to arg is empty");
                     return;
                 }
+                Console.WriteLine("App started with full argument string: " + string.Join(" ", args));
                // Console.WriteLine("Auto start: " + autoStart + ", " + asArgs);
 
                 var split = fromArg.Split('=');
@@ -35,6 +38,51 @@ namespace Mover
                 {
                     Console.WriteLine("split 2 is < 2");
                     return;
+                }
+                if (!string.IsNullOrEmpty(waitForPidExit))
+                {
+                    var pidSplit = waitForPidExit.Split('=');
+                    if (pidSplit.Length > 1)
+                    {
+                        var pidStr = pidSplit[1];
+                        Console.WriteLine("Got pid wait str: " + pidStr);
+                        int pid;
+                        if (!int.TryParse(pidStr, out pid)) Console.WriteLine("Pid string is not int: " + pidStr);
+                        else
+                        {
+                            try
+                            {
+                                var procWatch = Stopwatch.StartNew();
+                                var isRunning = true;
+                                while(isRunning)
+                                {
+                                    var procs = Process.GetProcesses();
+                                    var found = false;
+                                    for(int i = 0; i < procs.Length; i++)
+                                    {
+                                        var p = procs[i];
+                                        if (p?.Id == pid)
+                                        {
+                                            found = true;
+                                            break;
+                                        }
+                                    }
+                                    if (!found)
+                                    {
+                                        isRunning = false;
+                                        break;
+                                    }
+                                    System.Threading.Thread.Sleep(250);
+                                }
+                                procWatch.Stop();
+                                Console.WriteLine("Waited " + procWatch.Elapsed.TotalMilliseconds + "ms for pid " + pid + " to exit");
+                            }
+                            catch(Exception ex)
+                            {
+                                Console.WriteLine("Couldn't wait for pid exit for pid: " + pid + Environment.NewLine + ex.ToString());
+                            }
+                        }
+                    }
                 }
                 var waitStart = 0;
                 if (!string.IsNullOrEmpty(waitArg))
@@ -125,6 +173,18 @@ namespace Mover
                     }
                     Process.Start(info);
                     var sleepExit = 5000;
+                    if (!string.IsNullOrEmpty(exitWaitArg))
+                    {
+                        var waitSplit = exitWaitArg.Split('=');
+                        if (waitSplit.Length > 1)
+                        {
+                            var waitStr = waitSplit[1];
+                            Console.WriteLine("Got exit wait string: " + waitStr);
+                            int wait;
+                            if (!int.TryParse(waitStr, out wait)) Console.WriteLine("Exit wait string is not int: " + waitStr);
+                            else sleepExit = wait;
+                        }
+                    }
                     Console.WriteLine("Sleeping " + sleepExit + " before exiting.");
                     System.Threading.Thread.Sleep(sleepExit); //the program will exit when this sleep is finished. prevents errors with some programs after launch
                 }
