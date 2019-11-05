@@ -8,6 +8,7 @@ namespace Mover
     {
         static void Main(string[] args)
         {
+            if (args == null || args.Length < 1) return; //???
             try
             {
                 Console.WriteLine("App started with full argument string: " + string.Join(" ", args));
@@ -24,6 +25,7 @@ namespace Mover
                     var arg = args[i];
                     if (arg.Equals("-autostart", StringComparison.OrdinalIgnoreCase)) autoStart = true;
                     var splitArg = arg.Split('=');
+                    if (splitArg.Length < 2) continue;
                     var arg2 = splitArg[0];
                     var val = splitArg[1];
                     if (string.IsNullOrEmpty(arg2) || string.IsNullOrEmpty(val)) continue;
@@ -135,7 +137,7 @@ namespace Mover
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                Console.WriteLine("Exiting with HResult " + ex.HResult + " after we caught an exception: " + Environment.NewLine + ex.ToString());
                 Environment.Exit(ex.HResult);
             }
         }
