@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 
 namespace Mover
 {
@@ -11,120 +10,83 @@ namespace Mover
         {
             try
             {
-                var fromArg = args?.Where(p => p.StartsWith("-movefrom="))?.FirstOrDefault() ?? string.Empty;
-                var toArg = args?.Where(p => p.StartsWith("-moveto="))?.FirstOrDefault() ?? string.Empty;
-                var autoStart = args?.Any(p => p.Equals("-autostart", StringComparison.OrdinalIgnoreCase)) ?? false;
-                var asArgs = args?.Where(p => p.StartsWith("-autostartargs="))?.FirstOrDefault() ?? string.Empty;
-                var waitArg = args?.Where(p => p.StartsWith("-wait="))?.FirstOrDefault() ?? string.Empty;
-                var waitStartArg = args?.Where(p => p.StartsWith("-waitstart="))?.FirstOrDefault() ?? string.Empty;
-                var exitWaitArg = args?.Where(p => p.StartsWith("-exitwait="))?.FirstOrDefault() ?? string.Empty;
-                var waitForPidExit = args?.Where(p => p.StartsWith("-waitforpid="))?.FirstOrDefault() ?? string.Empty;
-                if (string.IsNullOrEmpty(fromArg) || string.IsNullOrEmpty(toArg))
-                {
-                    Console.WriteLine("Move from or move to arg is empty");
-                    return;
-                }
                 Console.WriteLine("App started with full argument string: " + string.Join(" ", args));
-               // Console.WriteLine("Auto start: " + autoStart + ", " + asArgs);
-
-                var split = fromArg.Split('=');
-                var split2 = toArg.Split('=');
-                if (split.Length < 2)
-                {
-                    Console.WriteLine("split is < 2!");
-                    return;
-                }
-                if (split2.Length < 2)
-                {
-                    Console.WriteLine("split 2 is < 2");
-                    return;
-                }
-                if (!string.IsNullOrEmpty(waitForPidExit))
-                {
-                    var pidSplit = waitForPidExit.Split('=');
-                    if (pidSplit.Length > 1)
-                    {
-                        var pidStr = pidSplit[1];
-                        Console.WriteLine("Got pid wait str: " + pidStr);
-                        int pid;
-                        if (!int.TryParse(pidStr, out pid)) Console.WriteLine("Pid string is not int: " + pidStr);
-                        else
-                        {
-                            try
-                            {
-                                var procWatch = Stopwatch.StartNew();
-                                var isRunning = true;
-                                while(isRunning)
-                                {
-                                    var procs = Process.GetProcesses();
-                                    var found = false;
-                                    for(int i = 0; i < procs.Length; i++)
-                                    {
-                                        var p = procs[i];
-                                        if (p?.Id == pid)
-                                        {
-                                            found = true;
-                                            break;
-                                        }
-                                    }
-                                    if (!found)
-                                    {
-                                        isRunning = false;
-                                        break;
-                                    }
-                                    System.Threading.Thread.Sleep(250);
-                                }
-                                procWatch.Stop();
-                                Console.WriteLine("Waited " + procWatch.Elapsed.TotalMilliseconds + "ms for pid " + pid + " to exit");
-                            }
-                            catch(Exception ex)
-                            {
-                                Console.WriteLine("Couldn't wait for pid exit for pid: " + pid + Environment.NewLine + ex.ToString());
-                            }
-                        }
-                    }
-                }
+                var moveFrom = string.Empty;
+                var moveTo = string.Empty;
+                var autoStart = false;
+                var autoStartArgs = string.Empty;
+                var wait = 0;
                 var waitStart = 0;
-                if (!string.IsNullOrEmpty(waitArg))
+                var exitWait = 0;
+                var waitPid = 0;
+                for(int i = 0; i < args.Length; i++)
                 {
-                    var waitSplit = waitArg.Split('=');
-                    if (waitSplit.Length > 1)
-                    {
-                        var waitStr = waitSplit[1];
-                        Console.WriteLine("Got wait string: " + waitStr);
-                        int wait;
-                        if (!int.TryParse(waitStr, out wait))
-                        {
-                            Console.WriteLine("Wait string is not int: " + waitStr);
+                    var arg = args[i];
+                    if (arg.Equals("-autostart", StringComparison.OrdinalIgnoreCase)) autoStart = true;
+                    var val = arg.Split('=')[1];
+                    if (string.IsNullOrEmpty(val)) continue;
+                    if (arg.Equals("-movefrom=")) moveFrom = val;
+                    if (arg.Equals("-moveto=")) moveTo = val;
+                    if (arg.Equals("-autostartargs=")) autoStartArgs = val;
+                    if (arg.Equals("-wait=")) int.TryParse(val, out wait);
+                    if (arg.Equals("-waitstart=")) int.TryParse(val, out waitStart);
+                    if (arg.Equals("-exitwait=")) int.TryParse(val, out exitWait);
+                    if (arg.Equals("-waitforpid=")) int.TryParse(val, out waitPid);
+                }
+                if (string.IsNullOrEmpty(moveFrom))
+                {
+                    Console.WriteLine("moveFrom arg is null/empty!");
+                    return;
+                }
+                if (string.IsNullOrEmpty(moveTo))
+                {
+                    Console.WriteLine("moveTo arg is null/empty!");
+                    return;
+                }
 
-                        }
-                        else
+                if (waitPid > 0)
+                {
+                    try
+                    {
+                        var procWatch = Stopwatch.StartNew();
+                        var isRunning = true;
+                        while (isRunning)
                         {
-                            if (wait <= 0) Console.WriteLine("Wait time is <= 0!");
-                            else
+                            var procs = Process.GetProcesses();
+                            var found = false;
+                            for (int i = 0; i < procs.Length; i++)
                             {
-                                Console.WriteLine("Waiting " + wait + " milliseconds");
-                                System.Threading.Thread.Sleep(wait);
-                                Console.WriteLine("Finished waiting");
+                                var p = procs[i];
+                                if (p?.Id == waitPid)
+                                {
+                                    found = true;
+                                    break;
+                                }
                             }
-
+                            if (!found)
+                            {
+                                isRunning = false;
+                                break;
+                            }
+                            System.Threading.Thread.Sleep(250);
                         }
+                        procWatch.Stop();
+                        Console.WriteLine("Waited " + procWatch.Elapsed.TotalMilliseconds + "ms for pid " + waitPid + " to exit");
                     }
-                }
-                if (!string.IsNullOrEmpty(waitStartArg))
-                {
-                    var waitSplit = waitStartArg.Split('=');
-                    if (waitSplit.Length > 1)
+                    catch (Exception ex)
                     {
-                        var waitStr = waitSplit[1];
-                        Console.WriteLine("Got wait start string: " + waitStr);
-                        int wait;
-                        if (!int.TryParse(waitStr, out wait)) Console.WriteLine("Wait start string is not int: " + waitStr);
-                        else waitStart = wait;
+                        Console.WriteLine("Couldn't wait for pid exit for pid: " + waitPid + Environment.NewLine + ex.ToString());
                     }
                 }
-                var path = split[1].Replace("\"", string.Empty);
-                var path2 = split2[1].Replace("\"", string.Empty);
+                if (wait > 0)
+                {
+                    Console.WriteLine("Waiting " + wait + " milliseconds");
+                    System.Threading.Thread.Sleep(wait);
+                    Console.WriteLine("Finished waiting");
+                }
+
+                var path = moveFrom.Replace("\"", string.Empty);
+                var path2 = moveTo.Replace("\"", string.Empty);
                 if (!File.Exists(path))
                 {
                     Console.WriteLine("Path doesn't exist for: " + path);
@@ -153,18 +115,10 @@ namespace Mover
                 if (autoStart)
                 {
                     Console.WriteLine("Auto start is true... Trying to start program after move.");
-                    var asArgs1 = asArgs.Split('=');
-                    var startArgs = string.Empty;
-                    if (asArgs1.Length > 1)
-                    {
-                        startArgs = asArgs1[1].Replace("\"", string.Empty);
-                        Console.WriteLine("Starting with args: " + startArgs);
-                    }
-                    else Console.WriteLine("No args for auto start!");
                     var info = new ProcessStartInfo();
                     info.FileName = path2;
                     info.WorkingDirectory = Path.GetDirectoryName(path2);
-                    info.Arguments = startArgs;
+                    info.Arguments = autoStartArgs;
                     Console.WriteLine("Filename: " + info.FileName + ", working dir: " + info.WorkingDirectory + ", argu: " + info.Arguments);
                     if (waitStart > 0)
                     {
@@ -172,19 +126,7 @@ namespace Mover
                         System.Threading.Thread.Sleep(waitStart);
                     }
                     Process.Start(info);
-                    var sleepExit = 5000;
-                    if (!string.IsNullOrEmpty(exitWaitArg))
-                    {
-                        var waitSplit = exitWaitArg.Split('=');
-                        if (waitSplit.Length > 1)
-                        {
-                            var waitStr = waitSplit[1];
-                            Console.WriteLine("Got exit wait string: " + waitStr);
-                            int wait;
-                            if (!int.TryParse(waitStr, out wait)) Console.WriteLine("Exit wait string is not int: " + waitStr);
-                            else sleepExit = wait;
-                        }
-                    }
+                    var sleepExit = exitWait > 0 ? exitWait : 5000;
                     Console.WriteLine("Sleeping " + sleepExit + " before exiting.");
                     System.Threading.Thread.Sleep(sleepExit); //the program will exit when this sleep is finished. prevents errors with some programs after launch
                 }
