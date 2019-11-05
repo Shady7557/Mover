@@ -23,15 +23,17 @@ namespace Mover
                 {
                     var arg = args[i];
                     if (arg.Equals("-autostart", StringComparison.OrdinalIgnoreCase)) autoStart = true;
-                    var val = arg.Split('=')[1];
-                    if (string.IsNullOrEmpty(val)) continue;
-                    if (arg.Equals("-movefrom=")) moveFrom = val;
-                    if (arg.Equals("-moveto=")) moveTo = val;
-                    if (arg.Equals("-autostartargs=")) autoStartArgs = val;
-                    if (arg.Equals("-wait=")) int.TryParse(val, out wait);
-                    if (arg.Equals("-waitstart=")) int.TryParse(val, out waitStart);
-                    if (arg.Equals("-exitwait=")) int.TryParse(val, out exitWait);
-                    if (arg.Equals("-waitforpid=")) int.TryParse(val, out waitPid);
+                    var splitArg = arg.Split('=');
+                    var arg2 = splitArg[0];
+                    var val = splitArg[1];
+                    if (string.IsNullOrEmpty(arg2) || string.IsNullOrEmpty(val)) continue;
+                    if (arg2.Equals("-movefrom", StringComparison.OrdinalIgnoreCase)) moveFrom = val;
+                    if (arg2.Equals("-moveto", StringComparison.OrdinalIgnoreCase)) moveTo = val;
+                    if (arg2.Equals("-autostartargs", StringComparison.OrdinalIgnoreCase)) autoStartArgs = val;
+                    if (arg2.Equals("-wait", StringComparison.OrdinalIgnoreCase)) int.TryParse(val, out wait);
+                    if (arg2.Equals("-waitstart", StringComparison.OrdinalIgnoreCase)) int.TryParse(val, out waitStart);
+                    if (arg2.Equals("-exitwait", StringComparison.OrdinalIgnoreCase)) int.TryParse(val, out exitWait);
+                    if (arg2.Equals("-waitforpid", StringComparison.OrdinalIgnoreCase)) int.TryParse(val, out waitPid);
                 }
                 if (string.IsNullOrEmpty(moveFrom))
                 {
